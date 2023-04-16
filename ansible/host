@@ -1,0 +1,6 @@
+[servers1]
+192.168.150.132 ansible_user=ansuser ansible_connection=ssh ansible_pass="1234"
+#192.168.150.131 ansible_connectin=ssh ansible_user=ansuser ansible_pass=1234
+#
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3

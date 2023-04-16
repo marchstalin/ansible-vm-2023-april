@@ -1,0 +1,103 @@
+---
+- hosts: all
+  become: yes
+  gather_facts: no
+  vars:
+    mysql_root_password: password
+  tasks:
+    - name: finding uptime
+      shell: uptime
+      register: up_time
+    - name: ram usage
+      shell: free -g
+      register: ram_info
+    - name: install apache
+      apt: name={{ item }}      state=latest
+      with_items:
+        - apache2
+        - php
+        - libapache2-mod-php
+        - php-cli
+        - php-mysql
+        - mysql-server
+        - php-fpm
+        - php-mbstring
+        - php-gd
+        - php-json
+        - php-curl
+        - php-xml
+        - php-common
+        - php-bcmath
+        - htop
+        - python3-pip
+        - python3-dev
+        - libmysqlclient-dev
+        - python3-mysqldb
+
+
+    - name: install apache support packages
+      apt: name=apache2-* state=present
+
+    - name: enable apache modules
+      shell: /usr/sbin/a2enmod actions rewrite #fcgid alias proxy_fcgi   #a2enmod mpm_preforker proxy mpm_prefork proxy_fcgi setenvif
+
+    - name: copy 
+      template:
+        src: "files/index.html.js"
+        dest: "/var/www/html/index.html"
+
+    - name: copy-2
+      template:
+        src: "files/apache2.conf.j2"
+        dest: "/etc/apache2/apache2.conf"
+
+    - name: copy-3
+      template:
+        src: "files/ports.conf.j2"
+        dest: "/etc/apache2/ports.conf"
+      notify:
+        - name: reload apache
+
+    - name: copy apache conf file from local to remote
+      template:
+        src: "files/ansible-2.conf.j2"
+        dest: "/etc/apache2/sites-enabled/ansible-2.conf"
+      notify: reload apache
+
+    - name: install MYSQL
+      apt: name=mysql-server state=latest update_cache=yes cache_valid_time=3600
+      notify: mysql started
+
+    - name: update mysql root password
+      mysql_user:
+        name: root
+        host: localhost
+        password: "{{ mysql_root_password }}"
+        check_implicit_admin: yes
+        priv: "*.*:ALL,GRANT"
+    - name: copy mysql.cnf
+      template:
+        src: "files/mysql.cnf.j2"
+        dest: "/root/.my.cnf"
+      
+
+    - name: create database and user
+      mysql_db: name=test1-db state=present login_user=root login_password="{ "mysql_root_password" }"
+
+
+  handlers:
+    - name: reload apache
+      service:
+        name: apache2
+        state: reloaded
+    - name: apache started
+      service:
+        name: apache2
+        state: started
+    - name: mysql started
+      service:
+        name: mysql
+        state: started
+
+
+# reference: https://medium.com/splunkuserdeveloperadministrator/creating-mysql-databases-with-ansible-925ab28598ab
